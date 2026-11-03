@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mis Finanzas en el celular</title>
+<meta name="description" content="Anota gastos, ingresos y pagos de tarjeta en el celular y pásalos a Mis Finanzas con Importar.">
+<meta name="theme-color" content="#0f766e" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c1312" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mis Finanzas">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Una columna de formulario rápido (pulgar primero) + la "tirilla" de pendientes; en pantallas anchas, dos columnas. */
+:root {
+  --bg: #f4f7f6;
+  --surface: #ffffff;
+  --ink: #13201e;
+  --muted: #5a6a67;
+  --line: #d9e2df;
+  --accent: #0f766e;
+  --accent-ink: #ffffff;
+  --accent-soft: #e0efec;
+  --gasto: #b8521f;
+  --ingreso: #12805a;
+  --neutral: #4a5aa8;
+  --danger: #b42323;
+  --danger-soft: #fbe7e7;
+  --warn-soft: #fff4d6;
+  --warn-ink: #6d4c00;
+  --shadow: 0 1px 2px rgba(19, 32, 30, .06), 0 6px 18px rgba(19, 32, 30, .06);
+  --font: "Onest", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --radius: 14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c1312; --surface: #141e1c; --ink: #e6efed; --muted: #95a6a2; --line: #26332f;
+    --accent: #2bb5a5; --accent-ink: #04211e; --accent-soft: #123430;
+    --gasto: #f08a5d; --ingreso: #4cc795; --neutral: #9aa8f0; --danger: #ff8080; --danger-soft: #3a1717;
+    --warn-soft: #3a3010; --warn-ink: #ffe28a; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-top: max(16px, env(safe-area-inset-top, 0px)); padding-bottom: 120px;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 18px; }
+@media (min-width: 900px) { .wrap { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: start; } .wide { grid-column: 1 / -1; } }
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mark { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 700; font-family: var(--mono); flex: none; }
+h1 { font-size: 1.25rem; margin: 0; line-height: 1.2; text-wrap: balance; }
+.sub { color: var(--muted); font-size: .85rem; margin: 0; }
+.badge { font-family: var(--mono); font-size: .8rem; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; white-space: nowrap; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+.card h2 { font-size: 1rem; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.card.tip { background: var(--accent-soft); border-color: transparent; box-shadow: none; }
+.card.tip p { margin: 0 0 8px; font-size: .92rem; }
+.label { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin: 14px 0 6px; display: block; }
+.label:first-child { margin-top: 0; }
+.hint { color: var(--muted); font-size: .84rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 14px; min-height: 40px;
+  font-size: .93rem; line-height: 1.1; display: inline-flex; align-items: center; gap: 6px;
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.chip.small { min-height: 34px; padding: 6px 12px; font-size: .86rem; }
+.chip .k { font-size: .72rem; opacity: .75; }
+.types { display: flex; flex-wrap: wrap; gap: 6px; }
+.amount { display: flex; align-items: baseline; gap: 6px; border-bottom: 2px solid var(--line); padding: 4px 2px 6px; }
+.amount:focus-within { border-color: var(--accent); }
+.amount span { font-family: var(--mono); font-size: 1.7rem; color: var(--muted); }
+.amount input { border: 0; background: transparent; font-family: var(--mono); font-size: 2.1rem; font-weight: 600; width: 100%; min-width: 0; outline: none; padding: 0; font-variant-numeric: tabular-nums; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.field { display: grid; gap: 4px; min-width: 0; align-content: start; }
+.field input, .field select, .input {
+  width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 8px 12px;
+}
+.field input:focus, .field select:focus, .input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 1px var(--accent); }
+.daychips { display: flex; gap: 6px; margin-top: 6px; }
+.notice { border-radius: 10px; padding: 10px 12px; font-size: .9rem; margin-top: 12px; }
+.notice.warn { background: var(--warn-soft); color: var(--warn-ink); }
+.notice.err { background: var(--danger-soft); color: var(--danger); }
+.notice .actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 16px; min-height: 44px; font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--danger); }
+.btn.link { border: 0; background: transparent; padding: 6px 0; min-height: 0; color: var(--accent); font-weight: 600; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.savebar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--surface); border-top: 1px solid var(--line);
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  display: flex; gap: 12px; align-items: center; justify-content: center;
+}
+.savebar .btn { flex: 1; max-width: 520px; font-size: 1.05rem; min-height: 50px; }
+.savebar .preview { font-family: var(--mono); font-size: .85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+@media (min-width: 900px) { .savebar { position: static; border: 0; padding: 0; margin-top: 16px; background: transparent; justify-content: flex-start; } body { padding-top: 24px; padding-bottom: 40px; } }
+/* Tirilla de pendientes */
+.receipt { font-family: var(--mono); font-size: .9rem; }
+.day { border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 8px; }
+.day:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+.dayhead { display: flex; justify-content: space-between; color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; }
+.item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px dotted var(--line); }
+.item:last-child { border-bottom: 0; }
+.item .what { font-family: var(--font); min-width: 0; }
+.item .what b { font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .what small { color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .val { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.val.Gasto { color: var(--gasto); }
+.val.Ingreso { color: var(--ingreso); }
+.val.other { color: var(--neutral); }
+.x { border: 0; background: transparent; color: var(--muted); width: 36px; height: 36px; border-radius: 8px; font-size: 1.1rem; }
+.x:hover { background: var(--danger-soft); color: var(--danger); }
+.confirm { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; font-family: var(--font); font-size: .88rem; flex-wrap: wrap; }
+.totals { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--mono); font-size: .85rem; border-top: 2px solid var(--ink); margin-top: 10px; padding-top: 8px; }
+.empty { color: var(--muted); padding: 18px 4px; text-align: center; font-size: .92rem; font-family: var(--font); }
+.steps { margin: 6px 0 12px; padding-left: 20px; display: grid; gap: 4px; font-size: .92rem; }
+details.more { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+details.more summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
+.acc-row { display: grid; grid-template-columns: minmax(0, 1fr) 160px 40px; gap: 8px; align-items: center; margin-bottom: 8px; }
+@media (max-width: 420px) { .acc-row { grid-template-columns: minmax(0, 1fr) 104px 36px; } .acc-row select { padding-inline: 8px; } }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); z-index: 20;
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: .92rem; max-width: calc(100% - 32px);
+  box-shadow: var(--shadow);
+}
+@media (min-width: 900px) { .toast { bottom: 24px; } }
+.status { font-size: .84rem; color: var(--muted); }
+.foot { color: var(--muted); font-size: .8rem; text-align: center; padding: 4px 8px 0; }
+@media (prefers-reduced-motion: no-preference) { .chip, .btn { transition: background .12s, border-color .12s, color .12s; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top wide">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">$</div>
+      <div>
+        <h1>Mis Finanzas en el celular</h1>
+        <p class="sub">Anota aquí y pásalo a la app del computador con Importar.</p>
+      </div>
+    </div>
+    <span class="badge" id="badge">0 por pasar</span>
+  </header>
+
+  <div id="storageError" class="wide" hidden>
+    <div class="notice err" style="margin:0">Este navegador no deja guardar datos (¿está en modo incógnito o privado?). Ábrela en una ventana normal para poder anotar.</div>
+  </div>
+
+  <div id="install" class="wide" hidden>
+    <div class="card tip">
+      <p><b>Ponla en tu pantalla de inicio</b> para abrirla como una app, incluso sin internet, y para que el celular no borre tus datos.</p>
+      <p class="hint" id="installHow"></p>
+      <div class="btnrow">
+        <button class="btn primary" id="installBtn" type="button" hidden>Instalar</button>
+        <button class="btn link" id="installHide" type="button">Ya lo hice</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="setup" class="wide" hidden></div>
+
+  <section class="card" aria-labelledby="t-nuevo">
+    <h2 id="t-nuevo">Nuevo movimiento</h2>
+    <form id="form" novalidate>
+      <div class="types" id="types" role="group" aria-label="Tipo de movimiento"></div>
+
+      <span class="label">Valor</span>
+      <label class="amount" for="amount"><span>$</span><input id="amount" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="Valor en pesos"></label>
+
+      <div id="catBlock">
+        <span class="label">Categoría</span>
+        <div class="chips" id="cats"></div>
+        <div id="subBlock" hidden>
+          <span class="label">Subcategoría <span class="hint">(opcional)</span></span>
+          <div class="chips" id="subs"></div>
+        </div>
+      </div>
+
+      <span class="label" id="accLabel">Cuenta o tarjeta</span>
+      <div class="chips" id="accs"></div>
+
+      <div id="toBlock" hidden>
+        <span class="label" id="toLabel">Hacia</span>
+        <div class="chips" id="tos"></div>
+      </div>
+
+      <div class="row2" style="margin-top:14px">
+        <div class="field">
+          <label class="label" for="date" style="margin:0">Fecha</label>
+          <input type="date" id="date">
+          <div class="daychips"><button type="button" class="chip small" id="today">Hoy</button><button type="button" class="chip small" id="yesterday">Ayer</button></div>
+        </div>
+        <div class="field">
+          <label class="label" for="method" style="margin:0">Método de pago</label>
+          <select id="method"></select>
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label class="label" for="desc" style="margin:0">Descripción <span class="hint">(opcional)</span></label>
+        <input id="desc" maxlength="200" placeholder="Ej: Almuerzo con el equipo" autocomplete="off">
+      </div>
+      <div id="formMsg"></div>
+      <div class="savebar">
+        <span class="preview" id="preview"></span>
+        <button class="btn primary" id="save" type="submit">Guardar</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="t-pend">
+    <h2 id="t-pend">Por pasar al computador <span class="status" id="pendCount"></span></h2>
+    <div class="receipt" id="pending"></div>
+    <div class="totals" id="totals" hidden></div>
+
+    <h2 style="margin-top:18px">Pasar a Mis Finanzas</h2>
+    <ol class="steps">
+      <li id="stepSend">Pulsa <b>Enviar archivo</b> y mándatelo por WhatsApp, correo o Drive. Guárdalo en el computador.</li>
+      <li>En Mis Finanzas: <b>Importar → Elegir archivo…</b> y luego <b>Importar</b>.</li>
+      <li>Si importas un archivo dos veces, la app salta los repetidos.</li>
+    </ol>
+    <div class="btnrow">
+      <button class="btn primary" id="share" type="button" disabled hidden>Enviar archivo (0)</button>
+      <button class="btn" id="export" type="button" disabled>Descargar archivo (0)</button>
+    </div>
+    <div id="exportMsg"></div>
+
+    <details class="more" id="doneBox" hidden>
+      <summary id="doneSummary">Ya enviados</summary>
+      <p class="hint">Bórralos de aquí cuando ya estén en Mis Finanzas.</p>
+      <div class="receipt" id="done"></div>
+      <div class="btnrow" style="margin-top:10px">
+        <button class="btn" id="resend" type="button">Enviar otra vez</button>
+        <button class="btn danger" id="clearDone" type="button">Borrar del celular</button>
+      </div>
+      <div id="doneMsg"></div>
+    </details>
+  </section>
+
+  <section class="card wide" aria-labelledby="t-cfg">
+    <details id="cfgBox">
+      <summary><h2 id="t-cfg" style="display:inline-flex; margin:0">Mis cuentas y categorías</h2></summary>
+      <p class="hint" style="margin-top:10px">Escribe tus cuentas y tarjetas <b>con el mismo nombre que tienen en Mis Finanzas</b> (sección Cuentas y tarjetas). Si un nombre no coincide, esa fila sale con error al importar.</p>
+      <div id="accEditor"></div>
+      <button class="btn" id="addAcc" type="button">Agregar cuenta</button>
+      <span class="label">Categorías propias</span>
+      <p class="hint">Las categorías de siempre ya están. Agrega aquí las que creaste en la app (por ejemplo Mascotas).</p>
+      <div id="catEditor"></div>
+      <div class="row2" style="grid-template-columns: 120px minmax(0,1fr); margin-top:8px">
+        <select class="input" id="newCatType" aria-label="Tipo de la categoría"><option>Gasto</option><option>Ingreso</option><option>Ahorro</option></select>
+        <input class="input" id="newCatName" placeholder="Nombre de la categoría" maxlength="50">
+      </div>
+      <input class="input" id="newCatSubs" placeholder="Subcategorías separadas por coma (opcional)" style="margin-top:8px" maxlength="300">
+      <button class="btn" id="addCat" type="button" style="margin-top:8px">Agregar categoría</button>
+      <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+        <button class="btn primary" id="saveCfg" type="button">Guardar cambios</button>
+        <span class="status" id="cfgMsg"></span>
+      </div>
+    </details>
+  </section>
+
+  <p class="foot wide">Tus movimientos se guardan solo en este celular, en este navegador. Nada se envía a internet hasta que tú envías el archivo.</p>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- Datos fijos (iguales a Mis Finanzas)
+const TYPES = [
+  { id: "Gasto", label: "Gasto" },
+  { id: "Ingreso", label: "Ingreso" },
+  { id: "Pago de deuda", label: "Pago de tarjeta" },
+  { id: "Transferencia", label: "Transferencia" },
+  { id: "Ahorro", label: "Ahorro" },
+];
+const BASE_CATS = {
+  Gasto: {
+    "Vivienda": ["Arriendo", "Administración", "Servicios", "Internet", "Mantenimiento"],
+    "Alimentación": ["Mercado", "Restaurantes", "Domicilios", "Cafeterías"],
+    "Transporte": ["Transporte público", "Gasolina", "Taxi/Uber", "Parqueadero", "Mantenimiento"],
+    "Vida personal": ["Ropa", "Entretenimiento", "Tecnología", "Viajes", "Suscripciones", "Cuidado personal"],
+    "Salud": ["Medicamentos", "Consultas", "Seguros", "Otros"],
+    "Educación": ["Cursos", "Libros", "Certificaciones", "Otros"],
+    "Otros": ["Gastos varios"],
+    "Financieros": ["Intereses", "Cuota de manejo", "Comisiones"],
+  },
+  Ingreso: { "Salario": [], "Bonificación": [], "Ingreso extra": [], "Otros": [] },
+  Ahorro: { "Fondo de emergencia": [], "Ahorro general": [], "Viajes": [], "Compra específica": [], "Otros": [] },
+};
+const METHODS = ["Efectivo", "Tarjeta débito", "Tarjeta crédito", "Transferencia", "Nequi", "Daviplata", "PSE", "Otro"];
+const KINDS = { cuenta: "Cuenta", tarjeta: "Tarjeta crédito", prestamo: "Préstamo" };
+const DEFAULT_ACCOUNTS = [
+  { name: "Cuenta bancaria", kind: "cuenta" }, { name: "Cuenta de ahorros", kind: "cuenta" },
+  { name: "Efectivo", kind: "cuenta" }, { name: "Nequi", kind: "cuenta" }, { name: "Daviplata", kind: "cuenta" },
+];
+
+// ---------------------------------------------------------------- Almacenamiento en este celular
+const KEY_CFG = "misfinanzas.config.v1";
+const KEY_MOVS = "misfinanzas.movimientos.v1";
+const KEY_INSTALL = "misfinanzas.instalada.v1";
+const store = {
+  ok: (() => { try { const k = "misfinanzas.prueba"; localStorage.setItem(k, "1"); localStorage.removeItem(k); return true; } catch (_) { return false; } })(),
+  read(key, fallback) {
+    try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (_) { return fallback; }
+  },
+  /** Lanza si no se pudo guardar (lleno, privado); quien llama avisa. */
+  write(key, value) { localStorage.setItem(key, JSON.stringify(value)); },
+};
+const newId = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+let persistAsked = false;
+function askPersist() {
+  if (persistAsked) return;
+  persistAsked = true;
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (_) { /* opcional */ }
+}
+
+// ---------------------------------------------------------------- Estado
+const S = {
+  type: "Gasto", cat: null, sub: null, acc: null, to: null, methodTouched: false,
+  config: { accounts: DEFAULT_ACCOUNTS.slice(), extraCats: [] }, hasConfig: false,
+  movs: [], draftAccounts: null, draftCats: null,
+};
+function loadAll() {
+  const cfg = store.read(KEY_CFG, null);
+  S.hasConfig = !!cfg;
+  S.config = {
+    accounts: cfg && Array.isArray(cfg.accounts) && cfg.accounts.length ? cfg.accounts : DEFAULT_ACCOUNTS.slice(),
+    extraCats: cfg && Array.isArray(cfg.extraCats) ? cfg.extraCats : [],
+  };
+  const movs = store.read(KEY_MOVS, []);
+  S.movs = (Array.isArray(movs) ? movs : []).filter((m) => m && m.id && m.fecha && m.valor)
+    .sort((a, b) => (b.fecha + (b.creado || "")).localeCompare(a.fecha + (a.creado || "")));
+}
+/** Guarda la lista completa; si falla, no cambia nada en pantalla. */
+function commitMovs(next) {
+  store.write(KEY_MOVS, next);
+  S.movs = next.slice().sort((a, b) => (b.fecha + (b.creado || "")).localeCompare(a.fecha + (a.creado || "")));
+  renderAll();
+}
+
+const $ = (id) => document.getElementById(id);
+const el = (tag, props = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "text") e.textContent = v;
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) e.append(c instanceof Node ? c : document.createTextNode(c));
+  return e;
+};
+const miles = (n) => Math.abs(Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+const cop = (n) => (n < 0 ? "-" : "") + "$" + miles(n);
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const today = () => iso(new Date());
+const yesterday = () => { const d = new Date(); d.setDate(d.getDate() - 1); return iso(d); };
+const dmy = (s) => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
+const norm = (s) => String(s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const dayLabel = (s) => {
+  if (s === today()) return "Hoy";
+  if (s === yesterday()) return "Ayer";
+  const [y, m, d] = s.split("-").map(Number);
+  return `${d} ${MONTHS[m - 1]}${y !== new Date().getFullYear() ? " " + y : ""}`;
+};
+const errText = (err) => (err && (err.message || err.name)) || String(err);
+const isQuota = (err) => err && (err.name === "QuotaExceededError" || err.code === 22 || err.code === 1014);
+
+let toastTimer;
+function toast(text) {
+  const t = $("toast");
+  t.textContent = text; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
+}
+function notice(slot, kind, text, actions) {
+  slot.replaceChildren(el("div", { class: `notice ${kind}` }, text, actions ? el("div", { class: "actions" }, actions) : null));
+}
+
+// ---------------------------------------------------------------- Catálogo
+function categories(type) {
+  const base = BASE_CATS[type] || {};
+  const out = Object.entries(base).map(([name, subs]) => ({ name, subs: subs.slice() }));
+  for (const c of S.config.extraCats || []) {
+    if (c.type !== type) continue;
+    const found = out.find((x) => norm(x.name) === norm(c.name));
+    if (found) found.subs = [...new Set([...found.subs, ...(c.subs || [])])];
+    else out.push({ name: c.name, subs: c.subs || [] });
+  }
+  return out;
+}
+function accountsFor(role) {
+  const all = S.config.accounts || [];
+  const kinds = {
+    gasto: ["cuenta", "tarjeta"], cuenta: ["cuenta"], todas: ["cuenta", "tarjeta", "prestamo"], deuda: ["tarjeta", "prestamo"],
+  }[role];
+  return all.filter((a) => a.name && kinds.includes(a.kind));
+}
+function sourceRole() { return S.type === "Gasto" ? "gasto" : S.type === "Transferencia" ? "todas" : "cuenta"; }
+function targetRole() { return S.type === "Pago de deuda" ? "deuda" : (S.type === "Transferencia" || S.type === "Ahorro") ? "cuenta" : null; }
+function accountByName(name) { return (S.config.accounts || []).find((a) => a.name === name) || null; }
+
+/** Método sugerido: el último usado con esa cuenta para ese tipo; si no, según la cuenta. */
+function suggestedMethod() {
+  const a = accountByName(S.acc);
+  if (S.type === "Gasto" && a && a.kind === "tarjeta") return "Tarjeta crédito";
+  const last = S.movs.find((m) => m.tipo === S.type && m.cuenta === S.acc && m.metodo);
+  if (last) return last.metodo;
+  const n = norm(S.acc);
+  if (n.includes("efectivo")) return "Efectivo";
+  if (n.includes("nequi")) return "Nequi";
+  if (n.includes("daviplata")) return "Daviplata";
+  return S.type === "Gasto" ? "Tarjeta débito" : "Transferencia";
+}
+
+// ---------------------------------------------------------------- Formulario
+function chip(label, pressed, onClick, extra) {
+  return el("button", { type: "button", class: "chip", "aria-pressed": pressed ? "true" : "false", onclick: onClick }, label, extra || null);
+}
+function renderTypes() {
+  $("types").replaceChildren(...TYPES.map((t) => chip(t.label, S.type === t.id, () => { if (S.type !== t.id) { S.type = t.id; S.cat = null; S.sub = null; S.to = null; S.methodTouched = false; renderForm(); } })));
+}
+function renderCats() {
+  const usesCat = ["Gasto", "Ingreso", "Ahorro"].includes(S.type);
+  $("catBlock").hidden = !usesCat;
+  if (!usesCat) return;
+  const list = categories(S.type);
+  $("cats").replaceChildren(...list.map((c) => chip(c.name, S.cat === c.name, () => { S.cat = S.cat === c.name ? null : c.name; S.sub = null; renderCats(); updatePreview(); })));
+  const cat = list.find((c) => c.name === S.cat);
+  $("subBlock").hidden = !(cat && cat.subs.length);
+  if (cat && cat.subs.length) {
+    $("subs").replaceChildren(...cat.subs.map((s) => chip(s, S.sub === s, () => { S.sub = S.sub === s ? null : s; renderCats(); updatePreview(); })));
+  }
+}
+function lastAccountFor(type, options) {
+  const names = options.map((a) => a.name);
+  const last = S.movs.find((m) => m.tipo === type && names.includes(m.cuenta));
+  return last ? last.cuenta : (names[0] || null);
+}
+function renderAccounts() {
+  $("accLabel").textContent = S.type === "Gasto" ? "Cuenta o tarjeta" : S.type === "Ingreso" ? "Cuenta" : "Desde";
+  const opts = accountsFor(sourceRole());
+  if (!opts.some((a) => a.name === S.acc)) { S.acc = lastAccountFor(S.type, opts); S.methodTouched = false; }
+  $("accs").replaceChildren(...(opts.length ? opts.map((a) => chip(a.name, S.acc === a.name, () => { S.acc = a.name; S.methodTouched = false; if (S.to === a.name) S.to = null; renderAccounts(); }, a.kind !== "cuenta" ? el("span", { class: "k", text: a.kind === "tarjeta" ? "tarjeta" : "préstamo" }) : null)) : [el("span", { class: "hint", text: "Agrega tus cuentas abajo, en «Mis cuentas y categorías»." })]));
+  const role = targetRole();
+  $("toBlock").hidden = !role;
+  if (role) {
+    $("toLabel").textContent = S.type === "Pago de deuda" ? "Tarjeta o deuda que pagas" : S.type === "Ahorro" ? "Hacia la cuenta (opcional)" : "Hacia";
+    const tos = accountsFor(role).filter((a) => a.name !== S.acc);
+    if (S.to && !tos.some((a) => a.name === S.to)) S.to = null;
+    if (!S.to && S.type !== "Ahorro" && tos.length) S.to = tos[0].name;
+    $("tos").replaceChildren(...(tos.length ? tos.map((a) => chip(a.name, S.to === a.name, () => { S.to = S.type === "Ahorro" && S.to === a.name ? null : a.name; renderAccounts(); })) : [el("span", { class: "hint", text: S.type === "Pago de deuda" ? "Agrega tus tarjetas abajo, en «Mis cuentas y categorías»." : "Agrega otra cuenta abajo." })]));
+  }
+  renderMethod();
+  updatePreview();
+}
+function renderMethod() {
+  const sel = $("method");
+  const a = accountByName(S.acc);
+  const forced = S.type === "Gasto" && a && a.kind === "tarjeta";
+  const value = forced ? "Tarjeta crédito" : S.methodTouched ? sel.value : suggestedMethod();
+  sel.replaceChildren(...(forced ? ["Tarjeta crédito"] : METHODS).map((m) => el("option", { value: m, text: m })));
+  sel.value = value; sel.disabled = forced;
+}
+function renderForm() {
+  renderTypes(); renderCats(); renderAccounts();
+  $("amount").focus({ preventScroll: true });
+}
+function amountValue() { const d = $("amount").value.replace(/\D/g, ""); return d ? Number(d) : 0; }
+function updatePreview() {
+  const v = amountValue();
+  const what = S.type === "Pago de deuda" ? (S.to || "") : (S.sub || S.cat || "");
+  $("preview").textContent = v ? `${cop(v)}${what ? " · " + what : ""}` : "";
+  $("save").textContent = v ? `Guardar ${cop(v)}` : "Guardar";
+}
+
+// Valor con puntos de miles (los pesos no llevan decimales). Máximo 99.999.999.999, el tope de la app.
+const amount = $("amount");
+amount.addEventListener("keydown", (e) => { if (e.key === "," || e.key === "." || e.key === "-") e.preventDefault(); });
+amount.addEventListener("input", () => {
+  const caret = amount.selectionStart || 0;
+  const before = amount.value.slice(0, caret).replace(/\D/g, "").length;
+  const digits = amount.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 11);
+  amount.value = digits ? miles(Number(digits)) : "";
+  let pos = 0, seen = 0;
+  while (pos < amount.value.length && seen < before) { if (/\d/.test(amount.value[pos])) seen++; pos++; }
+  try { amount.setSelectionRange(pos, pos); } catch (_) { /* algunos teclados no lo permiten */ }
+  updatePreview();
+});
+$("method").addEventListener("change", () => { S.methodTouched = true; });
+$("today").addEventListener("click", () => { $("date").value = today(); });
+$("yesterday").addEventListener("click", () => { $("date").value = yesterday(); });
+$("date").value = today();
+
+function validate() {
+  const errors = [];
+  if (!amountValue()) errors.push("Escribe el valor.");
+  if (["Gasto", "Ingreso", "Ahorro"].includes(S.type) && !S.cat) errors.push("Elige una categoría.");
+  if (!S.acc) errors.push("Elige la cuenta.");
+  if ((S.type === "Pago de deuda" || S.type === "Transferencia") && !S.to) errors.push(S.type === "Pago de deuda" ? "Elige la tarjeta o deuda que pagas." : "Elige la cuenta destino.");
+  const d = $("date").value;
+  if (!d) errors.push("Elige la fecha.");
+  else { const y = Number(d.slice(0, 4)); if (y < 2000 || y > 2100) errors.push("Revisa el año de la fecha."); }
+  return errors;
+}
+function currentEntry() {
+  const uses = ["Gasto", "Ingreso", "Ahorro"].includes(S.type);
+  return {
+    fecha: $("date").value, tipo: S.type, categoria: uses ? S.cat : "", subcategoria: uses ? (S.sub || "") : "",
+    descripcion: $("desc").value.trim(), valor: amountValue(), cuenta: S.acc,
+    cuentaDestino: targetRole() ? (S.to || "") : "", metodo: $("method").value || "",
+  };
+}
+const fingerprint = (m) => [m.fecha, m.tipo, m.valor, m.cuenta, norm(m.descripcion)].join("|");
+
+$("form").addEventListener("submit", (e) => { e.preventDefault(); save(false); });
+function save(force) {
+  const slot = $("formMsg");
+  slot.replaceChildren();
+  if (!store.ok) { notice(slot, "err", "Este navegador no deja guardar datos. Ábrela en una ventana normal (no incógnito)."); return; }
+  const errors = validate();
+  if (errors.length) { notice(slot, "err", errors.join(" ")); return; }
+  const entry = currentEntry();
+  // Mis Finanzas salta dos filas idénticas (misma fecha, tipo, valor, cuenta y descripción): si es otro igual, se numera.
+  const same = S.movs.filter((m) => fingerprint(m) === fingerprint(entry) || fingerprint(m).startsWith(fingerprint(entry) + " #"));
+  if (same.length && !force) {
+    notice(slot, "warn", `Ya anotaste uno igual (${cop(entry.valor)}, ${dayLabel(entry.fecha).toLowerCase()}, ${entry.cuenta}). ¿Es otro distinto?`, [
+      el("button", { type: "button", class: "btn primary", text: "Sí, es otro", onclick: () => save(true) }),
+      el("button", { type: "button", class: "btn", text: "No, revisar", onclick: () => slot.replaceChildren() }),
+    ]);
+    return;
+  }
+  if (same.length) entry.descripcion = `${entry.descripcion || entry.subcategoria || entry.categoria || entry.tipo} #${same.length + 1}`;
+  entry.id = newId();
+  entry.estado = "pendiente";
+  entry.creado = new Date().toISOString();
+  try {
+    commitMovs([entry, ...S.movs]);
+  } catch (err) {
+    notice(slot, "err", isQuota(err) ? "Se llenó el espacio del navegador: envía el archivo y borra los ya pasados al computador." : `No se pudo guardar (${errText(err)}). Intenta de nuevo.`);
+    return;
+  }
+  askPersist();
+  toast(`Guardado: ${cop(entry.valor)}${entry.categoria ? " en " + (entry.subcategoria || entry.categoria) : ""}`);
+  amount.value = ""; $("desc").value = ""; S.cat = null; S.sub = null; $("date").value = today();
+  S.methodTouched = false;
+  renderCats(); renderMethod(); updatePreview();
+  amount.focus({ preventScroll: true });
+}
+
+// ---------------------------------------------------------------- Lista (tirilla)
+function renderList(target, items, allowDelete) {
+  if (!items.length) { target.replaceChildren(el("div", { class: "empty", text: "Aquí aparecerán los movimientos que guardes, hasta que los pases a Mis Finanzas." })); return; }
+  const byDay = new Map();
+  for (const m of items) { if (!byDay.has(m.fecha)) byDay.set(m.fecha, []); byDay.get(m.fecha).push(m); }
+  const days = [...byDay.keys()].sort().reverse();
+  target.replaceChildren(...days.map((d) => {
+    const list = byDay.get(d);
+    const spent = list.filter((m) => m.tipo === "Gasto").reduce((s, m) => s + m.valor, 0);
+    return el("div", { class: "day" },
+      el("div", { class: "dayhead" }, el("span", { text: dayLabel(d) }), spent ? el("span", { text: `gastos ${cop(spent)}` }) : null),
+      ...list.map((m) => itemRow(m, allowDelete)));
+  }));
+}
+function itemRow(m, allowDelete) {
+  const what = m.tipo === "Pago de deuda" ? `Pago ${m.cuentaDestino}` : m.tipo === "Transferencia" ? `A ${m.cuentaDestino}` : (m.subcategoria ? `${m.categoria} › ${m.subcategoria}` : m.categoria);
+  const detail = [m.cuenta, m.descripcion].filter(Boolean).join(" · ");
+  const sign = m.tipo === "Gasto" ? "-" : m.tipo === "Ingreso" ? "+" : "";
+  const row = el("div", { class: "item" },
+    el("div", { class: "what" }, el("b", { text: what || m.tipo }), el("small", { text: detail })),
+    el("span", { class: `val ${m.tipo === "Gasto" || m.tipo === "Ingreso" ? m.tipo : "other"}`, text: sign + cop(m.valor) }),
+    allowDelete ? el("button", { type: "button", class: "x", "aria-label": `Borrar ${what} ${cop(m.valor)}`, text: "✕", onclick: () => askDelete(row, m) }) : el("span"));
+  return row;
+}
+function askDelete(row, m) {
+  if (row.querySelector(".confirm")) return;
+  const box = el("div", { class: "confirm" }, "¿Borrar este movimiento?",
+    el("button", { type: "button", class: "btn danger", text: "Sí, borrar", onclick: () => {
+      try { commitMovs(S.movs.filter((x) => x.id !== m.id)); toast("Movimiento borrado"); }
+      catch (err) { toast(`No se pudo borrar: ${errText(err)}`); }
+    } }),
+    el("button", { type: "button", class: "btn", text: "No", onclick: () => box.remove() }));
+  row.append(box);
+}
+function renderAll() {
+  const pending = S.movs.filter((m) => m.estado !== "exportado");
+  const done = S.movs.filter((m) => m.estado === "exportado");
+  renderList($("pending"), pending, true);
+  $("badge").textContent = `${pending.length} por pasar`;
+  $("pendCount").textContent = pending.length ? `${pending.length} movimiento(s)` : "";
+  const t = $("totals");
+  t.hidden = !pending.length;
+  if (pending.length) {
+    const sum = (tipo) => pending.filter((m) => m.tipo === tipo).reduce((s, m) => s + m.valor, 0);
+    t.replaceChildren(el("span", { text: `Gastos ${cop(sum("Gasto"))}` }), el("span", { text: `Ingresos ${cop(sum("Ingreso"))}` }),
+      sum("Pago de deuda") ? el("span", { text: `Pagos ${cop(sum("Pago de deuda"))}` }) : null);
+  }
+  $("share").disabled = !pending.length;
+  $("share").textContent = `Enviar archivo (${pending.length})`;
+  $("export").disabled = !pending.length;
+  $("export").textContent = `Descargar archivo (${pending.length})`;
+  $("doneBox").hidden = !done.length;
+  $("doneSummary").textContent = `Ya enviados (${done.length})`;
+  if (done.length) renderList($("done"), done, false);
+  updatePreview();
+}
+
+// ---------------------------------------------------------------- Archivo para Importar (mismas columnas que la plantilla de Mis Finanzas)
+const HEADERS = ["Fecha", "Tipo", "Categoría", "Subcategoría", "Descripción", "Valor", "Cuenta", "Cuenta destino", "Método de pago", "Clasificación", "Notas"];
+const cell = (v) => { const s = String(v ?? ""); return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+function toCsv(items) {
+  const rows = items.slice().sort((a, b) => (a.fecha + a.creado).localeCompare(b.fecha + b.creado)).map((m) => [
+    dmy(m.fecha), m.tipo, m.categoria, m.subcategoria, m.descripcion, m.valor, m.cuenta, m.cuentaDestino, m.metodo, "", "Desde el celular",
+  ].map(cell).join(";"));
+  return "﻿" + [HEADERS.join(";"), ...rows].join("\r\n") + "\r\n";
+}
+function csvFile(items) {
+  const name = `movimientos_celular_${today()}.csv`;
+  const blob = new Blob([toCsv(items)], { type: "text/csv;charset=utf-8" });
+  let file = null;
+  try { file = new File([blob], name, { type: "text/csv" }); } catch (_) { /* navegadores viejos */ }
+  return { name, blob, file };
+}
+const canShareFiles = (() => {
+  try {
+    if (!navigator.share || !navigator.canShare) return false;
+    return navigator.canShare({ files: [new File(["x"], "prueba.csv", { type: "text/csv" })] });
+  } catch (_) { return false; }
+})();
+
+/** Envía el archivo con el menú Compartir del celular. Debe llamarse directo desde el toque del botón. */
+async function shareItems(items, slot) {
+  slot.replaceChildren();
+  const { name, file } = csvFile(items);
+  try {
+    await navigator.share({ files: [file], title: name });
+    return true;
+  } catch (err) {
+    if (err && err.name === "AbortError") notice(slot, "warn", "No se envió el archivo. Tus movimientos siguen aquí.");
+    else notice(slot, "err", `No se pudo enviar (${errText(err)}). Usa «Descargar archivo».`);
+    return false;
+  }
+}
+function downloadItems(items, slot) {
+  slot.replaceChildren();
+  const { name, blob } = csvFile(items);
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = el("a", { href: url, download: name, style: "display:none" });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    return true;
+  } catch (err) {
+    notice(slot, "err", `No se pudo descargar (${errText(err)}).`);
+    return false;
+  }
+}
+function markExported(items) {
+  const ids = new Set(items.map((m) => m.id));
+  const when = new Date().toISOString();
+  try { commitMovs(S.movs.map((m) => (ids.has(m.id) ? { ...m, estado: "exportado", exportado: when } : m))); }
+  catch (_) { /* si no se pudo marcar, quedan como pendientes y se pueden volver a enviar */ }
+}
+const NEXT = "Listo. En el computador guarda el archivo y en Mis Finanzas ve a Importar → Elegir archivo…";
+$("share").addEventListener("click", async () => {
+  const pending = S.movs.filter((m) => m.estado !== "exportado");
+  if (!pending.length) return;
+  if (await shareItems(pending, $("exportMsg"))) { markExported(pending); notice($("exportMsg"), "warn", NEXT); }
+});
+$("export").addEventListener("click", () => {
+  const pending = S.movs.filter((m) => m.estado !== "exportado");
+  if (!pending.length) return;
+  if (downloadItems(pending, $("exportMsg"))) {
+    markExported(pending);
+    notice($("exportMsg"), "warn", "Quedó en Descargas. " + NEXT);
+  }
+});
+$("resend").addEventListener("click", async () => {
+  const done = S.movs.filter((m) => m.estado === "exportado");
+  if (!done.length) return;
+  if (canShareFiles) await shareItems(done, $("doneMsg"));
+  else downloadItems(done, $("doneMsg"));
+});
+$("clearDone").addEventListener("click", () => {
+  const done = S.movs.filter((m) => m.estado === "exportado");
+  notice($("doneMsg"), "warn", `¿Ya importaste estos ${done.length} movimiento(s) en Mis Finanzas? Se borrarán solo de este celular.`, [
+    el("button", { type: "button", class: "btn danger", text: "Sí, borrar", onclick: () => {
+      try { commitMovs(S.movs.filter((m) => m.estado !== "exportado")); $("doneMsg").replaceChildren(); toast("Borrados de este celular"); }
+      catch (err) { toast(`No se pudo borrar: ${errText(err)}`); }
+    } }),
+    el("button", { type: "button", class: "btn", text: "No", onclick: () => $("doneMsg").replaceChildren() }),
+  ]);
+});
+
+// ---------------------------------------------------------------- Ajustes: cuentas y categorías
+function renderSettings() {
+  if (!S.draftAccounts) S.draftAccounts = (S.config.accounts || []).map((a) => ({ ...a }));
+  if (!S.draftCats) S.draftCats = (S.config.extraCats || []).map((c) => ({ ...c, subs: (c.subs || []).slice() }));
+  $("accEditor").replaceChildren(...S.draftAccounts.map((a, i) => {
+    const name = el("input", { class: "input", value: a.name, placeholder: "Nombre como en la app", maxlength: "50", "aria-label": "Nombre de la cuenta" });
+    name.addEventListener("input", () => { a.name = name.value; });
+    const kind = el("select", { class: "input", "aria-label": "Tipo de cuenta" }, ...Object.entries(KINDS).map(([k, label]) => el("option", { value: k, text: label })));
+    kind.value = a.kind; kind.addEventListener("change", () => { a.kind = kind.value; });
+    return el("div", { class: "acc-row" }, name, kind, el("button", { type: "button", class: "x", "aria-label": "Quitar cuenta", text: "✕", onclick: () => { S.draftAccounts.splice(i, 1); renderSettings(); } }));
+  }));
+  $("catEditor").replaceChildren(...(S.draftCats.length ? S.draftCats.map((c, i) => el("div", { class: "acc-row", style: "grid-template-columns: minmax(0,1fr) 36px" },
+    el("span", { text: `${c.type} · ${c.name}${c.subs.length ? " (" + c.subs.join(", ") + ")" : ""}` }),
+    el("button", { type: "button", class: "x", "aria-label": "Quitar categoría", text: "✕", onclick: () => { S.draftCats.splice(i, 1); renderSettings(); } }))) : [el("p", { class: "hint", text: "Sin categorías propias." })]));
+}
+$("addAcc").addEventListener("click", () => { S.draftAccounts.push({ name: "", kind: "cuenta" }); renderSettings(); $("accEditor").lastChild.querySelector("input").focus(); });
+$("addCat").addEventListener("click", () => {
+  const name = $("newCatName").value.trim().replace(/\s+/g, " ");
+  if (!name) { $("cfgMsg").textContent = "Escribe el nombre de la categoría."; return; }
+  const subs = $("newCatSubs").value.split(",").map((s) => s.trim().replace(/\s+/g, " ")).filter(Boolean);
+  S.draftCats.push({ type: $("newCatType").value, name, subs });
+  $("newCatName").value = ""; $("newCatSubs").value = ""; $("cfgMsg").textContent = "";
+  renderSettings();
+});
+$("saveCfg").addEventListener("click", () => {
+  const accounts = S.draftAccounts.map((a) => ({ name: a.name.trim().replace(/\s+/g, " "), kind: a.kind })).filter((a) => a.name);
+  const names = accounts.map((a) => norm(a.name));
+  if (!accounts.length) { $("cfgMsg").textContent = "Deja al menos una cuenta."; return; }
+  if (names.length !== new Set(names).size) { $("cfgMsg").textContent = "Hay dos cuentas con el mismo nombre."; return; }
+  try {
+    store.write(KEY_CFG, { accounts, extraCats: S.draftCats, actualizado: new Date().toISOString() });
+  } catch (err) {
+    $("cfgMsg").textContent = `No se pudo guardar (${errText(err)}).`;
+    return;
+  }
+  askPersist();
+  loadAll(); S.draftAccounts = null; S.draftCats = null;
+  renderSettings(); renderSetup(); renderTypes(); renderCats(); renderAccounts();
+  $("cfgMsg").textContent = "Guardado.";
+  toast("Cuentas y categorías guardadas");
+});
+
+function renderSetup() {
+  const box = $("setup");
+  box.hidden = S.hasConfig || !store.ok;
+  if (box.hidden) return;
+  box.replaceChildren(el("div", { class: "card" },
+    el("h2", { text: "Antes de empezar: revisa tus cuentas" }),
+    el("p", { class: "hint", text: "Para que el archivo entre sin errores en Mis Finanzas, las cuentas y tarjetas deben llamarse igual que en la app. Abre «Mis cuentas y categorías», ajusta los nombres, agrega tus tarjetas y pulsa Guardar cambios." }),
+    el("button", { type: "button", class: "btn primary", text: "Revisar mis cuentas", onclick: () => { $("cfgBox").open = true; $("cfgBox").scrollIntoView({ behavior: "smooth", block: "start" }); } })));
+}
+
+// ---------------------------------------------------------------- Pantalla de inicio (instalar)
+let installEvent = null;
+const standalone = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+function renderInstall() {
+  const hidden = standalone() || store.read(KEY_INSTALL, false) === true;
+  $("install").hidden = hidden;
+  if (hidden) return;
+  $("installBtn").hidden = !installEvent;
+  $("installHow").textContent = installEvent ? "Pulsa Instalar." : isIOS
+    ? "En Safari: botón Compartir (el cuadrado con flecha) → «Agregar a inicio»."
+    : "En Chrome: menú ⋮ → «Agregar a la pantalla principal» o «Instalar app».";
+}
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvent = e; renderInstall(); });
+window.addEventListener("appinstalled", () => { installEvent = null; try { store.write(KEY_INSTALL, true); } catch (_) {} renderInstall(); });
+$("installBtn").addEventListener("click", async () => {
+  if (!installEvent) return;
+  installEvent.prompt();
+  try { await installEvent.userChoice; } catch (_) { /* nada */ }
+  installEvent = null; renderInstall();
+});
+$("installHide").addEventListener("click", () => { try { store.write(KEY_INSTALL, true); } catch (_) {} renderInstall(); });
+
+// Otra pestaña abierta con la misma página: mantener todo al día.
+window.addEventListener("storage", (e) => {
+  if (e.key !== KEY_MOVS && e.key !== KEY_CFG) return;
+  loadAll(); S.draftAccounts = null; S.draftCats = null;
+  renderSettings(); renderSetup(); renderTypes(); renderCats(); renderAccounts(); renderAll();
+});
+
+// ---------------------------------------------------------------- Arranque
+$("storageError").hidden = store.ok;
+$("share").hidden = !canShareFiles;
+$("stepSend").replaceChildren(...(canShareFiles
+  ? ["Pulsa ", el("b", { text: "Enviar archivo" }), " y mándatelo por WhatsApp, correo o Drive. Guárdalo en el computador."]
+  : ["Pulsa ", el("b", { text: "Descargar archivo" }), " y pásatelo al computador por correo, Drive o cable."]));
+if (!canShareFiles) $("export").classList.add("primary");
+loadAll();
+renderSettings();
+renderSetup();
+renderInstall();
+renderForm();
+renderAll();
+
+if ("serviceWorker" in navigator && window.isSecureContext && location.protocol !== "file:") {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => { /* sin modo sin internet */ }); });
+}
+</script>
+</body>
+</html>
