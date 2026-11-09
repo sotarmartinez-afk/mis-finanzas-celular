@@ -496,7 +496,38 @@ function updatePreview() {
 
 // Valor con puntos de miles (los pesos no llevan decimales). Máximo 99.999.999.999, el tope de la app.
 const amount = $("amount");
-amount.addEventListener("keydown", (e) => { if (e.key === "," || e.key === "." || e.key === "-") e.preventDefault(); });
+// Lo que se escribe después de una coma son centavos: no se suman al valor (2.122.331,02 no se vuelve
+// 212.233.102); al salir del campo se redondea al peso. Un punto seguido de 1 o 2 cifras también son centavos.
+let cents = null, dotMark = null;
+const amountDigits = () => amount.value.replace(/\D/g, "").length;
+amount.addEventListener("beforeinput", (e) => {
+  if (e.inputType && e.inputType.startsWith("delete")) {
+    if (cents !== null) { e.preventDefault(); cents = cents.length ? cents.slice(0, -1) : null; }
+    return;
+  }
+  if (e.inputType !== "insertText" || e.data == null) return;
+  const ch = e.data;
+  if (ch === ",") { e.preventDefault(); if (amountDigits()) cents = ""; return; }
+  if (ch === ".") { e.preventDefault(); dotMark = amountDigits(); return; }
+  if (ch === "-" || ch === "+") { e.preventDefault(); return; }
+  if (cents !== null && /^\d+$/.test(ch)) { e.preventDefault(); cents = (cents + ch).slice(0, 2); }
+});
+function finishAmount() {
+  let digits = amount.value.replace(/\D/g, "");
+  if (cents === null && dotMark !== null && digits.length - dotMark >= 1 && digits.length - dotMark <= 2) {
+    cents = digits.slice(dotMark);
+    digits = digits.slice(0, dotMark);
+  }
+  if (cents !== null) {
+    const up = cents && digits && Number(cents.padEnd(2, "0")) >= 50 ? 1 : 0;
+    amount.value = digits ? miles(Number(digits) + up) : "";
+    if (!S.centsHinted) { S.centsHinted = true; toast("Los valores van en pesos, sin centavos: se redondean al peso."); }
+  }
+  cents = null; dotMark = null;
+  updatePreview();
+}
+amount.addEventListener("blur", finishAmount);
+amount.addEventListener("focus", () => { cents = null; dotMark = null; });
 amount.addEventListener("input", () => {
   const caret = amount.selectionStart || 0;
   const before = amount.value.slice(0, caret).replace(/\D/g, "").length;
@@ -533,7 +564,7 @@ function currentEntry() {
 }
 const fingerprint = (m) => [m.fecha, m.tipo, m.valor, m.cuenta, norm(m.descripcion)].join("|");
 
-$("form").addEventListener("submit", (e) => { e.preventDefault(); save(false); });
+$("form").addEventListener("submit", (e) => { e.preventDefault(); finishAmount(); save(false); });
 function save(force) {
   const slot = $("formMsg");
   slot.replaceChildren();
